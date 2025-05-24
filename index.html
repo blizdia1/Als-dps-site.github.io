@@ -31,7 +31,7 @@
       font-family: 'Segoe UI', sans-serif;
       background-color: var(--bg-color);
       color: var(--text-color);
-      overflow: hidden;
+      overflow-x: hidden;
       transition: background-color var(--transition-speed), color var(--transition-speed);
     }
 
@@ -55,7 +55,7 @@
       justify-content: center;
       align-items: flex-start;
       gap: 2rem;
-      padding-top: 4rem;
+      padding: 4rem 1rem;
       flex-wrap: wrap;
       perspective: 1200px;
       z-index: 10;
@@ -127,6 +127,19 @@
       color: var(--text-color);
       cursor: pointer;
       z-index: 99;
+    }
+
+    @media screen and (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        align-items: center;
+        padding-top: 2rem;
+      }
+
+      .card {
+        width: 90%;
+        max-width: 400px;
+      }
     }
   </style>
 </head>
