@@ -101,11 +101,11 @@
       border: none;
       border-radius: var(--border-radius);
       cursor: pointer;
-      transition: transform 0.2s;
+      transition: transform 0.1s ease-in-out;
     }
 
-    button:hover {
-      transform: scale(1.05);
+    button:active {
+      transform: scale(0.98);
     }
 
     .result {
@@ -113,6 +113,7 @@
       font-size: 1.2rem;
       text-align: center;
       color: var(--result-color);
+      white-space: normal;
     }
 
     .toggle-mode {
@@ -162,39 +163,46 @@
       <input type="number" id="spa" placeholder="Enter SPA (Seconds Per Attack)" />
       <input type="number" id="critDmg" placeholder="Crit Damage % (e.g. 50 for 50%)" />
       <input type="number" id="critChance" placeholder="Crit Chance % (e.g. 30 for 30%)" />
-      <input type="number" id="dotMultiplier" placeholder="DOT Multiplier % (e.g. 50 for 50%)" />
+      <select id="statusEffect">
+        <option value="none">None</option>
+        <option value="bolt">Bolt</option>
+        <option value="bleed">Bleed</option>
+        <option value="hemorrhage">Hemorrhage</option>
+        <option value="burn">Burn</option>
+        <option value="mutilate">Mutilate</option>
+        <option value="blackflames">Blackflames</option>
+        <option value="blizzard">Blizzard</option>
+        <option value="sunburn">Sunburn</option>
+        <option value="blueflame">Blueflame</option>
+        <option value="plasma">Plasma</option>
+        <option value="dismantle">Dismantle</option>
+        <option value="blaze">Blaze</option>
+      </select>
       <button onclick="calculateDPS()">Calculate DPS</button>
       <div class="result" id="result"></div>
-      <div class="result" id="avgResult"></div>
-    </div>
-
-    <div class="card">
-      <h1>DPS with Dot</h1>
-      <select id="statusEffect">
-        <option value="">Select your status effect</option>
-        <option value="5">Bolt</option>
-        <option value="6">Bleed</option>
-        <option value="3">Hemorrhage</option>
-        <option value="8">Burn</option>
-        <option value="8">Mutilate</option>
-        <option value="10">Blackflames</option>
-        <option value="9">Blizzard</option>
-        <option value="7">Sunburn</option>
-        <option value="9">Blueflame</option>
-        <option value="7">Plasma</option>
-        <option value="6">Dismantle</option>
-        <option value="7">Blaze</option>
-      </select>
-      <button onclick="calculateDotDPS()">Calculate DOT DPS</button>
-      <div class="result" id="dotDpsResult"></div>
     </div>
   </div>
 
   <script>
+    const dotConfigs = {
+      bolt: { spaReq: 5, multi: 1.2 },
+      bleed: { spaReq: 6, multi: 1.4 },
+      hemorrhage: { spaReq: 3, multi: 1.4 },
+      burn: { spaReq: 8, multi: 1.2 },
+      mutilate: { spaReq: 8, multi: 2.0 },
+      blackflames: { spaReq: 10, multi: 4.8 },
+      blizzard: { spaReq: 9, multi: 1.9 },
+      sunburn: { spaReq: 7, multi: 1.75 },
+      blueflame: { spaReq: 9, multi: 1.3 },
+      plasma: { spaReq: 7, multi: 1.55 },
+      dismantle: { spaReq: 6, multi: 2.3 },
+      blaze: { spaReq: 7, multi: 1.5 }
+    };
+
     function formatLargeNumber(num) {
-      if (num >= 1e12) return (num / 1e12).toFixed(2) + ' Trillion';
-      if (num >= 1e9) return (num / 1e9).toFixed(2) + ' Billion';
-      if (num >= 1e6) return (num / 1e6).toFixed(2) + ' Million';
+      if (num >= 1e12) return (num / 1e12).toFixed(2) + '&nbsp;Trillion';
+      if (num >= 1e9) return (num / 1e9).toFixed(2) + '&nbsp;Billion';
+      if (num >= 1e6) return (num / 1e6).toFixed(2) + '&nbsp;Million';
       return num.toFixed(2);
     }
 
@@ -204,107 +212,47 @@
       const spa = parseFloat(document.getElementById('spa').value);
       const critDmg = parseFloat(document.getElementById('critDmg').value) || 0;
       const critChance = parseFloat(document.getElementById('critChance').value) || 0;
+      const statusKey = document.getElementById('statusEffect').value;
       const resultDiv = document.getElementById('result');
-      const avgResultDiv = document.getElementById('avgResult');
 
-      if (isNaN(damage) || isNaN(spa) || spa === 0) {
+      if (isNaN(damage) || isNaN(spa) || spa === 0 || isNaN(unitMultiplier)) {
         resultDiv.textContent = 'Please enter valid values';
-        avgResultDiv.textContent = '';
         return;
       }
 
       const fullDamage = damage * unitMultiplier;
-      const usualDps = fullDamage / spa;
       const critRatio = (critDmg / 100) * (critChance / 100);
-      const avgDps = fullDamage * (1 + critRatio) / spa;
 
-      resultDiv.textContent = `Usual DPS: ${formatLargeNumber(usualDps)}`;
-      avgResultDiv.textContent = `Average DPS: ${formatLargeNumber(avgDps)}`;
-    }
+      if (statusKey !== 'none' && dotConfigs[statusKey]) {
+        const config = dotConfigs[statusKey];
+        const dotRatio = config.multi;
+        const spaRequirement = config.spaReq;
 
-    function calculateDotDPS() {
-      const damage = parseFloat(document.getElementById('damage').value);
-      const unitMultiplier = parseFloat(document.getElementById('damageUnit').value);
-      const spa = parseFloat(document.getElementById('spa').value);
-      const dotMultiplier = parseFloat(document.getElementById('dotMultiplier').value) || 0;
-      const statusEffect = parseFloat(document.getElementById('statusEffect').value);
-      const dotDpsResult = document.getElementById('dotDpsResult');
+        let dotDps = 0;
+        if (spa > spaRequirement) {
+          dotDps = (fullDamage * dotRatio) / spa;
+        } else {
+          dotDps = ((fullDamage * (1 + dotRatio)) + fullDamage) / (2 * spa);
+        }
 
-      if (isNaN(damage) || isNaN(spa) || isNaN(statusEffect)) {
-        dotDpsResult.textContent = 'Please fill in all required fields';
-        return;
-      }
+        const dotAverage = ((fullDamage * dotRatio) / spa) * (1 + critRatio);
 
-      const fullDamage = damage * unitMultiplier;
-      const dotRatio = dotMultiplier / 100;
-      let dotDps = 0;
-
-      if (spa > statusEffect) {
-        dotDps = (fullDamage * dotRatio) / spa;
+        resultDiv.innerHTML =
+          `Usual DPS (${statusKey}): ${formatLargeNumber(dotDps)}<br>` +
+          `Average DPS (${statusKey}): ${formatLargeNumber(dotAverage)}`;
       } else {
-        dotDps = ((fullDamage * (1 + dotRatio)) + fullDamage) / (2 * spa);
-      }
+        const usualDps = fullDamage / spa;
+        const avgDps = fullDamage * (1 + critRatio) / spa;
 
-      dotDpsResult.textContent = `DOT DPS: ${formatLargeNumber(dotDps)}`;
+        resultDiv.innerHTML =
+          `Usual DPS: ${formatLargeNumber(usualDps)}<br>` +
+          `Average DPS: ${formatLargeNumber(avgDps)}`;
+      }
     }
 
     function toggleMode() {
       document.body.classList.toggle('light-mode');
     }
-
-    const canvas = document.getElementById('background');
-    const ctx = canvas.getContext('2d');
-    let particlesArray;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    window.addEventListener('resize', () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      initParticles();
-    });
-
-    class Particle {
-      constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 2 + 1;
-        this.speedX = Math.random() * 1 - 0.5;
-        this.speedY = Math.random() * 1 - 0.5;
-      }
-      update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
-        if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
-      }
-      draw() {
-        ctx.fillStyle = 'rgba(0, 255, 204, 0.8)';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    function initParticles() {
-      particlesArray = [];
-      for (let i = 0; i < 100; i++) {
-        particlesArray.push(new Particle());
-      }
-    }
-
-    function animateParticles() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < particlesArray.length; i++) {
-        particlesArray[i].update();
-        particlesArray[i].draw();
-      }
-      requestAnimationFrame(animateParticles);
-    }
-
-    initParticles();
-    animateParticles();
   </script>
 </body>
 </html>
